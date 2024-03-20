@@ -1,0 +1,22 @@
+name: dart_seq_http_client
+description: HTTP client implementation for dart_seq
+version: 0.0.1
+homepage: https://github.com/ricardoboss/dart_seq_http_client
+issue_tracker: https://github.com/ricardoboss/dart_seq_http_client/issues
+
+topics:
+  - logging
+  - logger
+  - seq
+  - http
+
+environment:
+  sdk: '^3.0.0'
+
+dependencies:
+  dart_seq: '^1.0.0'
+  http: ^1.2.1
+
+dev_dependencies:
+  strict: ^2.0.0
+  test: ^1.25.2
