@@ -1,7 +1,8 @@
 import 'package:dart_seq/dart_seq.dart';
+import 'package:dart_seq_http_client/dart_seq_http_client.dart';
 
 Future<void> main() async {
-  final logger = SeqLogger.http(
+  final logger = SeqHttpLogger.create(
     host: 'http://localhost:5341',
     globalContext: {
       'App': 'Example',
