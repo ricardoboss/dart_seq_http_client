@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:dart_seq/dart_seq.dart';
+import 'package:dart_seq_http_client/dart_seq_http_client.dart';
 import 'package:test/test.dart';
 
 void main() {

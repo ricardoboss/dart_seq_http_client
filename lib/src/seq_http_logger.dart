@@ -1,4 +1,5 @@
 import 'package:dart_seq/dart_seq.dart';
+import 'package:dart_seq_http_client/dart_seq_http_client.dart';
 
 class SeqHttpLogger {
   /// Creates a new instance of [SeqLogger] that logs to a Seq server over HTTP.

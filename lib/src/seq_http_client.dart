@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:dart_seq/dart_seq.dart';
-import 'package:dart_seq_http_client/src/seq_http_client_exception.dart';
+import 'package:dart_seq_http_client/dart_seq_http_client.dart';
 import 'package:http/http.dart' as http;
 
 /// Calculates a linearly increasing duration to based on the number of [tries].

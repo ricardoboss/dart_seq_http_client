@@ -14,7 +14,10 @@ environment:
   sdk: '^3.0.0'
 
 dependencies:
-  dart_seq: '^1.0.0'
+  dart_seq:
+    git:
+      url: https://github.com/ricardoboss/dart_seq
+      ref: issues/2-split-http
   http: ^1.2.1
 
 dev_dependencies:
