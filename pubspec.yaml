@@ -1,6 +1,6 @@
 name: dart_seq_http_client
 description: HTTP client implementation for dart_seq
-version: 0.0.1-pre.1
+version: 0.0.1-pre.2
 homepage: https://github.com/ricardoboss/dart_seq_http_client
 issue_tracker: https://github.com/ricardoboss/dart_seq_http_client/issues
 
