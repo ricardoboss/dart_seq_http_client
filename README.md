@@ -4,7 +4,7 @@
 ![Pub Likes](https://img.shields.io/pub/likes/dart_seq_http_client)
 ![Pub Popularity](https://img.shields.io/pub/popularity/dart_seq_http_client)
 
-`dart_seq_http_client` is an HTTP client implementation for `dart_seq`, enabling you to send log
+`dart_seq_http_client` is a HTTP client implementation for `dart_seq`, enabling you to send log
 entries to a Seq server using HTTP ingestion.
 
 ## Features
