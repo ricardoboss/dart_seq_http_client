@@ -14,6 +14,7 @@ class SeqHttpClient implements SeqClient {
     String? apiKey,
     int maxRetries = 5,
     Duration Function(int tries)? backoff,
+    http.Client? httpClient,
   })  : assert(host.isNotEmpty, 'host must not be empty'),
         assert(host.startsWith('http'), 'the host must contain a scheme'),
         assert(null == apiKey || apiKey.isNotEmpty, 'apiKey must not be empty'),
@@ -24,12 +25,14 @@ class SeqHttpClient implements SeqClient {
         },
         _maxRetries = maxRetries,
         _endpoint = Uri.parse('$host/api/events/raw'),
-        _backoff = backoff ?? linearBackoff;
+        _backoff = backoff ?? linearBackoff,
+        _httpClient = httpClient ?? http.Client();
 
   final Map<String, String> _headers;
   final Duration Function(int tries) _backoff;
   final int _maxRetries;
   final Uri _endpoint;
+  final http.Client _httpClient;
 
   String? _minimumLevelAccepted;
 
@@ -37,12 +40,12 @@ class SeqHttpClient implements SeqClient {
   String? get minimumLevelAccepted => _minimumLevelAccepted;
 
   @override
-  Future<void> sendEvents(List<SeqEvent> events) async {
+  Future<List<SeqEventSentResult>> sendEvents(List<SeqEvent> events) async {
     final body = _collapseEvents(events);
     if (body.isEmpty) {
       SeqLogger.diagnosticLog(SeqLogLevel.verbose, 'No events to send.');
 
-      return;
+      return [];
     }
 
     http.Response response;
@@ -52,7 +55,17 @@ class SeqHttpClient implements SeqClient {
       throw SeqClientException('Failed to send request', e, stack);
     }
 
-    await _handleResponse(response);
+    if (response.statusCode == 201) {
+      _handleSuccessResponse(response);
+      return events.map(SeqEventSentResult.success).toList();
+    }
+
+    if (response.statusCode == 400 && events.length > 1) {
+      return _retryIndividually(events);
+    }
+
+    // Non-recoverable per-event error — always throws
+    _handleErrorResponse(response);
   }
 
   String _collapseEvents(List<SeqEvent> events) =>
@@ -67,11 +80,12 @@ class SeqHttpClient implements SeqClient {
     const noRetryStatusCodes = [201, 400, 401, 403, 413, 429, 500];
     do {
       try {
-        response = await http.post(
+        response = await _httpClient.post(
           _endpoint,
           headers: _headers,
           body: body,
         );
+        lastException = null;
       } on Exception catch (e) {
         lastException = e;
 
@@ -96,7 +110,7 @@ class SeqHttpClient implements SeqClient {
     return response!;
   }
 
-  Future<void> _handleResponse(http.Response response) async {
+  void _handleSuccessResponse(http.Response response) {
     final json = jsonDecode(response.body);
     if (json is! Map<String, dynamic>) {
       throw SeqHttpClientException(
@@ -106,15 +120,21 @@ class SeqHttpClient implements SeqClient {
     }
 
     final seqResponse = SeqResponse.fromJson(json);
+    if (seqResponse.minimumLevelAccepted != _minimumLevelAccepted) {
+      _minimumLevelAccepted = seqResponse.minimumLevelAccepted;
+    }
+  }
 
-    if (response.statusCode == 201) {
-      if (seqResponse.minimumLevelAccepted != _minimumLevelAccepted) {
-        _minimumLevelAccepted = seqResponse.minimumLevelAccepted;
-      }
-
-      return;
+  Never _handleErrorResponse(http.Response response) {
+    final json = jsonDecode(response.body);
+    if (json is! Map<String, dynamic>) {
+      throw SeqHttpClientException(
+        'The response body was not a JSON object',
+        response: response,
+      );
     }
 
+    final seqResponse = SeqResponse.fromJson(json);
     final problem = seqResponse.error ?? 'no problem details known';
 
     final message = switch (response.statusCode) {
@@ -132,5 +152,43 @@ class SeqHttpClient implements SeqClient {
     };
 
     throw SeqHttpClientException(message, response: response);
+  }
+
+  Future<List<SeqEventSentResult>> _retryIndividually(
+    List<SeqEvent> events,
+  ) async {
+    final results = <SeqEventSentResult>[];
+
+    for (final event in events) {
+      try {
+        final body = jsonEncode(event);
+        final response = await _httpClient.post(
+          _endpoint,
+          headers: _headers,
+          body: body,
+        );
+
+        if (response.statusCode == 201) {
+          _handleSuccessResponse(response);
+          results.add(SeqEventSentResult.success(event));
+        } else {
+          final isPermanent = response.statusCode == 400;
+          results.add(
+            SeqEventSentResult.failure(
+              event,
+              SeqHttpClientException(
+                'Individual event rejected with status ${response.statusCode}',
+                response: response,
+              ),
+              isPermanent: isPermanent,
+            ),
+          );
+        }
+      } catch (e) {
+        results.add(SeqEventSentResult.failure(event, e));
+      }
+    }
+
+    return results;
   }
 }
