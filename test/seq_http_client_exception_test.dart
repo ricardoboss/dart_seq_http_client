@@ -49,11 +49,95 @@ void main() {
       expect(exception.innerStackTrace, stack);
     });
 
-    test('toString includes message from parent', () {
+    test('toString includes message', () {
       final exception = SeqHttpClientException('http error');
 
       expect(exception.toString(), contains('http error'));
-      expect(exception.toString(), contains('SeqClientException'));
+      expect(exception.toString(), contains('SeqHttpClientException'));
+    });
+
+    test('toString includes status code and body when response is present',
+        () {
+      final response = http.Response(
+        '{"Error":"@tr trace id too long"}',
+        400,
+      );
+      final exception = SeqHttpClientException(
+        'bad request',
+        response: response,
+      );
+
+      final str = exception.toString();
+      expect(str, contains('statusCode: 400'));
+      expect(str, contains('@tr trace id too long'));
+    });
+
+    test('toString includes innerException when present', () {
+      final exception = SeqHttpClientException(
+        'wrapper',
+        innerException: Exception('root cause'),
+      );
+
+      expect(exception.toString(), contains('innerException:'));
+      expect(exception.toString(), contains('root cause'));
+    });
+
+    group('isRetryable', () {
+      test('returns true when response is null', () {
+        final exception = SeqHttpClientException('network error');
+
+        expect(exception.isRetryable, isTrue);
+      });
+
+      test('returns false for 413 Payload Too Large', () {
+        final response = http.Response('too large', 413);
+        final exception = SeqHttpClientException(
+          'payload too large',
+          response: response,
+        );
+
+        expect(exception.isRetryable, isFalse);
+      });
+
+      test('returns false for 400 Bad Request', () {
+        final response = http.Response('bad request', 400);
+        final exception = SeqHttpClientException(
+          'bad request',
+          response: response,
+        );
+
+        expect(exception.isRetryable, isFalse);
+      });
+
+      test('returns true for 500 Internal Server Error', () {
+        final response = http.Response('server error', 500);
+        final exception = SeqHttpClientException(
+          'server error',
+          response: response,
+        );
+
+        expect(exception.isRetryable, isTrue);
+      });
+
+      test('returns true for 503 Service Unavailable', () {
+        final response = http.Response('unavailable', 503);
+        final exception = SeqHttpClientException(
+          'unavailable',
+          response: response,
+        );
+
+        expect(exception.isRetryable, isTrue);
+      });
+
+      test('returns true for 429 Too Many Requests', () {
+        final response = http.Response('rate limited', 429);
+        final exception = SeqHttpClientException(
+          'rate limited',
+          response: response,
+        );
+
+        expect(exception.isRetryable, isTrue);
+      });
     });
   });
 }
