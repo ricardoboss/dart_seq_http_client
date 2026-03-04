@@ -568,8 +568,7 @@ void main() {
         );
       });
 
-      test('does not retry individually on 401 with multiple events',
-          () async {
+      test('does not retry individually on 401 with multiple events', () async {
         final mockClient = MockClient(
           (_) async => _jsonResponse(401, error: 'unauthorized'),
         );

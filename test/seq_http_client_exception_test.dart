@@ -56,8 +56,7 @@ void main() {
       expect(exception.toString(), contains('SeqHttpClientException'));
     });
 
-    test('toString includes status code and body when response is present',
-        () {
+    test('toString includes status code and body when response is present', () {
       final response = http.Response(
         '{"Error":"@tr trace id too long"}',
         400,
