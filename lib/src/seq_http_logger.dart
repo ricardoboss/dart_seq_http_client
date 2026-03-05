@@ -11,6 +11,18 @@ class SeqHttpLogger {
   /// By default, a new instance of [SeqInMemoryCache] is used for caching the
   /// events. If you want to use a different cache, you can pass it as the
   /// [cache] parameter.
+  ///
+  /// When [throwOnError] is `true`, exceptions during flush propagate to the
+  /// caller instead of being silently caught. Defaults to `false`.
+  ///
+  /// When [onFlushError] is set, it is called with per-event results on flush
+  /// failure. See [FlushErrorHandler] for details.
+  ///
+  /// The [httpBackoff] function controls retry delay between failed HTTP
+  /// requests. Defaults to linear backoff (100ms * attempt).
+  ///
+  /// Pass a custom [httpClient] to control the underlying HTTP transport
+  /// (useful for testing or custom TLS configuration).
   static SeqLogger create({
     required String host,
     String? apiKey,
@@ -21,15 +33,10 @@ class SeqHttpLogger {
     String? minimumLogLevel,
     bool autoFlush = true,
     bool throwOnError = false,
-    Duration? flushInterval,
     FlushErrorHandler? onFlushError,
-    void Function(SeqEvent event)? onDiagnosticLog,
     Duration Function(int tries)? httpBackoff,
     http.Client? httpClient,
   }) {
-    if (onDiagnosticLog != null) {
-      SeqLogger.onDiagnosticLog = onDiagnosticLog;
-    }
     final seqHttpClient = SeqHttpClient(
       host: host,
       apiKey: apiKey,
@@ -48,7 +55,6 @@ class SeqHttpLogger {
       minimumLogLevel: minimumLogLevel,
       autoFlush: autoFlush,
       throwOnError: throwOnError,
-      flushInterval: flushInterval,
       onFlushError: onFlushError,
     );
   }

@@ -1,17 +1,12 @@
-## 2.0.0
+## 2.0.0 ([#1](https://github.com/ricardoboss/dart_seq_http_client/pull/1))
 
-### Breaking Changes
-
-* Requires `dart_seq` 3.0.0 (named parameter migration applies to all logging calls)
-
-### New Features
-
-* `SeqHttpLogger.create()` now accepts `throwOnError`, `flushInterval`, and `onFlushError` parameters
-
-### Documentation
-
-* README: Error Handling section (#13) with `throwOnError`, `onFlushError`, `onDiagnosticLog`, exception hierarchy
-* Comprehensive `example/main.dart` demonstrating all features
+* **Breaking:** Requires `dart_seq` 3.0.0 (`sendEvents` returns `Future<List<SeqEventResult>>`)
+* **Breaking:** `SeqResponse` constructor now uses named parameters
+* Per-event retry on batch 400 - isolates malformed events instead of failing the entire batch
+* `SeqHttpClientException.isRetryable` - 400/413 are non-retryable, others retryable
+* `SeqHttpClientException.toString()` includes status code and response body
+* `SeqHttpLogger.create()` accepts `throwOnError` and `onFlushError` parameters
+* README: Error Handling section ([#13](https://github.com/ricardoboss/dart_seq/issues/13)) with exception hierarchy docs
 
 ## 1.0.0
 

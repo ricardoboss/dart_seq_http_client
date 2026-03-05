@@ -40,7 +40,7 @@ class SeqHttpClient implements SeqClient {
   String? get minimumLevelAccepted => _minimumLevelAccepted;
 
   @override
-  Future<List<SeqEventSentResult>> sendEvents(List<SeqEvent> events) async {
+  Future<List<SeqEventResult>> sendEvents(List<SeqEvent> events) async {
     final body = _collapseEvents(events);
     if (body.isEmpty) {
       SeqLogger.diagnosticLog(SeqLogLevel.verbose, 'No events to send.');
@@ -57,19 +57,18 @@ class SeqHttpClient implements SeqClient {
 
     if (response.statusCode == 201) {
       _handleSuccessResponse(response);
-      return events.map(SeqEventSentResult.success).toList();
+      return events.map(SeqEventResult.success).toList();
     }
 
     if (response.statusCode == 400 && events.length > 1) {
       return _retryIndividually(events);
     }
 
-    // Non-recoverable per-event error — always throws
+    // Non-recoverable per-event error - always throws
     _handleErrorResponse(response);
   }
 
-  String _collapseEvents(List<SeqEvent> events) =>
-      events.reversed.map(jsonEncode).join('\n');
+  String _collapseEvents(List<SeqEvent> events) => events.reversed.map(jsonEncode).join('\n');
 
   Future<http.Response> _sendRequest(String body) async {
     http.Response? response;
@@ -100,8 +99,7 @@ class SeqHttpClient implements SeqClient {
 
         await Future<void>.delayed(backoffDuration);
       }
-    } while (!noRetryStatusCodes.contains(response?.statusCode) &&
-        ++tries < _maxRetries);
+    } while (!noRetryStatusCodes.contains(response?.statusCode) && ++tries < _maxRetries);
 
     if (lastException != null) {
       throw lastException;
@@ -140,8 +138,7 @@ class SeqHttpClient implements SeqClient {
     final message = switch (response.statusCode) {
       400 => 'The request was malformed: $problem',
       401 => 'Authorization is required: $problem',
-      403 =>
-        "The provided credentials don't have ingestion permission: $problem",
+      403 => "The provided credentials don't have ingestion permission: $problem",
       413 => 'The payload itself exceeds the configured maximum size: $problem',
       429 => 'Too many requests',
       500 =>
@@ -154,27 +151,23 @@ class SeqHttpClient implements SeqClient {
     throw SeqHttpClientException(message, response: response);
   }
 
-  Future<List<SeqEventSentResult>> _retryIndividually(
+  Future<List<SeqEventResult>> _retryIndividually(
     List<SeqEvent> events,
   ) async {
-    final results = <SeqEventSentResult>[];
+    final results = <SeqEventResult>[];
 
     for (final event in events) {
       try {
         final body = jsonEncode(event);
-        final response = await _httpClient.post(
-          _endpoint,
-          headers: _headers,
-          body: body,
-        );
+        final response = await _sendRequest(body);
 
         if (response.statusCode == 201) {
           _handleSuccessResponse(response);
-          results.add(SeqEventSentResult.success(event));
+          results.add(SeqEventResult.success(event));
         } else {
           final isPermanent = response.statusCode == 400;
           results.add(
-            SeqEventSentResult.failure(
+            SeqEventResult.failure(
               event,
               SeqHttpClientException(
                 'Individual event rejected with status ${response.statusCode}',
@@ -185,7 +178,7 @@ class SeqHttpClient implements SeqClient {
           );
         }
       } catch (e) {
-        results.add(SeqEventSentResult.failure(event, e));
+        results.add(SeqEventResult.failure(event, e));
       }
     }
 

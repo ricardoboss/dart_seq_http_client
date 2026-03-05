@@ -61,26 +61,29 @@ file to start a local Seq instance.
 
 `SeqHttpClient.sendEvents()` handles server responses as follows:
 
-| Server response | Batch size | Behavior |
-|---|---|---|
-| **201** | any | Success — returns all `SeqEventSentResult.success` |
-| **400** | > 1 | Per-event retry — each event sent individually (see below) |
-| **400** | 1 | **Throws** — single event is malformed, can't isolate further |
-| **401/403** | any | **Throws** — auth problem, not per-event |
-| **413/429/500/503** | any | **Throws** — server problem, not per-event |
-| Network error | any | Retries with backoff up to `maxRetries`, then **throws** |
+| Server response     | Batch size | Behavior                                                      |
+| ------------------- | ---------- | ------------------------------------------------------------- |
+| **201**             | any        | Success - returns all `SeqEventResult.success`                |
+| **400**             | > 1        | Per-event retry - each event sent individually (see below)    |
+| **400**             | 1          | **Throws** - single event is malformed, can't isolate further |
+| **401/403**         | any        | **Throws** - auth problem, not per-event                      |
+| **413/429/500/503** | any        | **Throws** - server problem, not per-event                    |
+| Network error       | any        | Retries with backoff up to `maxRetries`, then **throws**      |
+
+When an error **throws**, it propagates to `SeqLogger.flush()`. By default, flush catches and
+handles the error silently. Set `throwOnError: true` to let it propagate to your code.
 
 ### Per-event retry on batch 400
 
 When a batch of multiple events is rejected with HTTP 400, the client retries each event
 individually to isolate the bad ones:
 
-| Individual response | Result |
-|---|---|
-| 201 | `SeqEventSentResult.success` |
-| 400 | `SeqEventSentResult.failure(isPermanent: true)` — event is malformed |
-| Other 4xx/5xx | `SeqEventSentResult.failure(isPermanent: false)` — transient |
-| Network error | `SeqEventSentResult.failure(isPermanent: false)` — transient |
+| Individual response | Result                                                           |
+| ------------------- | ---------------------------------------------------------------- |
+| 201                 | `SeqEventResult.success`                                         |
+| 400                 | `SeqEventResult.failure(isPermanent: true)` - event is malformed |
+| Other 4xx/5xx       | `SeqEventResult.failure(isPermanent: false)` - transient         |
+| Network error       | `SeqEventResult.failure(isPermanent: false)` - transient         |
 
 The `isPermanent` flag tells `SeqLogger.flush()` whether to drop or re-queue the event
 (see [`dart_seq` README](https://pub.dev/packages/dart_seq) for flush behavior details).
@@ -101,7 +104,7 @@ Result: events 1 and 3 delivered, event 2 dropped from cache
 
 ## Error Handling
 
-By default, logging methods will never throw exceptions — errors during flush are silently caught
+By default, logging methods will never throw exceptions - errors during flush are silently caught
 and reported via `onDiagnosticLog`. To let exceptions propagate, set `throwOnError: true`:
 
 ```dart
@@ -131,7 +134,7 @@ Only provide `onFlushError` if you need custom logic (logging, retry limits, etc
 ```dart
 final logger = SeqHttpLogger.create(
   host: 'http://localhost:5341',
-  onFlushError: (results, error) async {
+  onFlushError: (Iterable<SeqEventResult> results, Object error) async {
     final toRetry = <SeqEvent>[];
 
     for (final r in results.where((r) => !r.isSuccess)) {
@@ -149,8 +152,8 @@ final logger = SeqHttpLogger.create(
 
 ### Exception hierarchy
 
-- `SeqClientException` — base exception for all Seq client errors (defined in `dart_seq`)
-- `SeqHttpClientException` — HTTP-specific errors with access to the `Response` object
+- `SeqClientException` - base exception for all Seq client errors (defined in `dart_seq`)
+- `SeqHttpClientException` - HTTP-specific errors with access to the `Response` object
   (defined in `dart_seq_http_client`)
 
 ## Additional information

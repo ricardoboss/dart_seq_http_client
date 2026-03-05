@@ -17,18 +17,18 @@ class SeqHttpClientException extends SeqClientException {
       ..write('SeqHttpClientException: ')
       ..write(message);
 
-    if (response != null) {
+    if (response case final Response r) {
       buffer
         ..write('; statusCode: ')
-        ..write(response!.statusCode)
+        ..write(r.statusCode)
         ..write('; body: ')
-        ..write(response!.body);
+        ..write(r.body);
     }
 
-    if (innerException != null) {
+    if (innerException case final innerExceptionValue?) {
       buffer
         ..write('; innerException: ')
-        ..write(innerException);
+        ..write(innerExceptionValue);
     }
 
     return buffer.toString();
@@ -36,12 +36,16 @@ class SeqHttpClientException extends SeqClientException {
 
   /// Non-retryable when the server explicitly rejects the request body.
   ///
-  /// - 413 (Payload Too Large) — the batch is too big; resending won't help.
-  /// - 400 (Bad Request) — the payload is malformed; resending won't help.
+  /// - 413 (Payload Too Large) - the batch is too big; resending won't help.
+  /// - 400 (Bad Request) - the payload is malformed; resending won't help.
   @override
   bool get isRetryable {
     final code = response?.statusCode;
-    if (code == null) return true;
-    return code != 413 && code != 400;
+
+    return switch (code) {
+      413 || 400 => false,
+      null => true,
+      _ => true,
+    };
   }
 }

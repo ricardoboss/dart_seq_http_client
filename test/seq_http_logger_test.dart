@@ -98,36 +98,6 @@ void main() {
       expect(logger.throwOnError, isFalse);
     });
 
-    test('create() passes flushInterval through', () {
-      final logger = SeqHttpLogger.create(
-        host: 'https://localhost',
-        flushInterval: const Duration(seconds: 10),
-      );
-
-      expect(logger.flushInterval, const Duration(seconds: 10));
-    });
-
-    test('create() sets onDiagnosticLog when provided', () {
-      final events = <SeqEvent>[];
-      final logger = SeqHttpLogger.create(
-        host: 'https://localhost',
-        onDiagnosticLog: events.add,
-      );
-
-      expect(logger, isA<SeqLogger>());
-      expect(SeqLogger.onDiagnosticLog, isNotNull);
-
-      // Clean up static state
-      SeqLogger.onDiagnosticLog = null;
-    });
-
-    test('create() does not override onDiagnosticLog when not provided', () {
-      SeqLogger.onDiagnosticLog = null;
-      SeqHttpLogger.create(host: 'https://localhost');
-
-      expect(SeqLogger.onDiagnosticLog, isNull);
-    });
-
     test('create() accepts httpClient parameter', () {
       final mockClient = MockClient((_) async => http.Response('{}', 200));
       final logger = SeqHttpLogger.create(

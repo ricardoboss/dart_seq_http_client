@@ -4,18 +4,18 @@ import 'package:dart_seq/dart_seq.dart';
 import 'package:dart_seq_http_client/dart_seq_http_client.dart';
 
 Future<List<SeqEvent>> _handleFlushError(
-  List<SeqEventSentResult> results,
+  Iterable<SeqEventResult> results,
   Object error,
 ) async {
   final toRetry = <SeqEvent>[];
 
   for (final r in results.where((r) => !r.isSuccess)) {
     if (r.isPermanent) {
-      // Event is malformed (e.g. HTTP 400) — retrying would fail again.
+      // Event is malformed (e.g. HTTP 400) - retrying would fail again.
       print('Dropping permanently rejected event: ${r.error}');
       continue;
     }
-    // Transient failure (network, server overload) — retry.
+    // Transient failure (network, server overload) - retry.
     toRetry.add(r.event);
   }
 
@@ -43,7 +43,6 @@ Future<void> main() async {
   final logger = SeqHttpLogger.create(
     host: 'http://localhost:5341',
     backlogLimit: 10,
-    flushInterval: const Duration(seconds: 5),
     globalContext: {
       'App': 'dart_seq_example',
       'Environment': 'development',
@@ -119,9 +118,6 @@ Future<void> main() async {
 
   // ── Flush remaining events ──────────────────────────────────────────
   await logger.flush();
-
-  // ── Clean up ────────────────────────────────────────────────────────
-  logger.dispose();
 
   print('Done! Open http://localhost:80 to view events in Seq.');
 }

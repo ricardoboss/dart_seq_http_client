@@ -70,17 +70,11 @@ void main() {
     });
 
     group('sendEvents', () {
-      test('logs diagnostic and returns empty list for empty events', () async {
-        SeqEvent? diagnosticEvent;
-        SeqLogger.onDiagnosticLog = (event) => diagnosticEvent = event;
-
+      test('returns empty list for empty events', () async {
         final client = SeqHttpClient(host: 'http://localhost:5341');
         final results = await client.sendEvents([]);
 
         expect(results, isEmpty);
-        expect(diagnosticEvent, isNotNull);
-
-        SeqLogger.onDiagnosticLog = null;
       });
 
       test('sends events and returns all-success on 201', () async {
@@ -264,7 +258,13 @@ void main() {
 
         expect(
           () => client.sendEvents([SeqEvent.info('test')]),
-          throwsA(isA<SeqHttpClientException>()),
+          throwsA(
+            isA<SeqHttpClientException>().having(
+              (e) => e.message,
+              'message',
+              contains('starting up'),
+            ),
+          ),
         );
       });
 
@@ -324,8 +324,9 @@ void main() {
         try {
           await client.sendEvents([SeqEvent.info('test')]);
           fail('Expected SeqClientException');
-        } on SeqClientException {
-          // expected
+        } on SeqClientException catch (e) {
+          expect(e.message, 'Failed to send request');
+          expect(e.innerException, isA<SocketException>());
         }
 
         expect(requestCount, 3);
@@ -480,7 +481,6 @@ void main() {
 
       test('handles network error during individual retry', () async {
         var batchRequestSent = false;
-        var individualRequestIndex = 0;
 
         final mockClient = MockClient((request) async {
           final body = request.body;
@@ -491,8 +491,7 @@ void main() {
             return _jsonResponse(400, error: 'batch malformed');
           }
 
-          individualRequestIndex++;
-          if (individualRequestIndex == 2) {
+          if (body.contains('network-fail')) {
             throw const SocketException('Connection lost');
           }
           return _jsonResponse(201);
@@ -501,6 +500,7 @@ void main() {
         final client = SeqHttpClient(
           host: 'http://localhost:5341',
           httpClient: mockClient,
+          backoff: (_) => Duration.zero,
         );
 
         final events = [
@@ -608,11 +608,13 @@ void main() {
           httpClient: mockClient,
         );
 
-        await client.sendEvents([
+        final results = await client.sendEvents([
           SeqEvent.info('one'),
           SeqEvent.info('two'),
         ]);
 
+        expect(results, hasLength(2));
+        expect(results.every((r) => r.isSuccess), isTrue);
         expect(client.minimumLevelAccepted, 'Error');
       });
     });
@@ -659,10 +661,6 @@ void main() {
         }
       });
 
-      test('empty events list produces empty string', () {
-        final body = <SeqEvent>[].reversed.map(jsonEncode).join('\n');
-        expect(body, isEmpty);
-      });
     });
   });
 
