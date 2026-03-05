@@ -15,18 +15,18 @@ class SeqHttpClient implements SeqClient {
     int maxRetries = 5,
     Duration Function(int tries)? backoff,
     http.Client? httpClient,
-  })  : assert(host.isNotEmpty, 'host must not be empty'),
-        assert(host.startsWith('http'), 'the host must contain a scheme'),
-        assert(null == apiKey || apiKey.isNotEmpty, 'apiKey must not be empty'),
-        assert(maxRetries >= 0, 'maxRetries must be >= 0'),
-        _headers = {
-          'Content-Type': 'application/vnd.serilog.clef',
-          if (apiKey != null) 'X-Seq-ApiKey': apiKey,
-        },
-        _maxRetries = maxRetries,
-        _endpoint = Uri.parse('$host/api/events/raw'),
-        _backoff = backoff ?? linearBackoff,
-        _httpClient = httpClient ?? http.Client();
+  }) : assert(host.isNotEmpty, 'host must not be empty'),
+       assert(host.startsWith('http'), 'the host must contain a scheme'),
+       assert(null == apiKey || apiKey.isNotEmpty, 'apiKey must not be empty'),
+       assert(maxRetries >= 0, 'maxRetries must be >= 0'),
+       _headers = {
+         'Content-Type': 'application/vnd.serilog.clef',
+         if (apiKey != null) 'X-Seq-ApiKey': apiKey,
+       },
+       _maxRetries = maxRetries,
+       _endpoint = Uri.parse('$host/api/events/raw'),
+       _backoff = backoff ?? linearBackoff,
+       _httpClient = httpClient ?? http.Client();
 
   final Map<String, String> _headers;
   final Duration Function(int tries) _backoff;
@@ -68,7 +68,8 @@ class SeqHttpClient implements SeqClient {
     _handleErrorResponse(response);
   }
 
-  String _collapseEvents(List<SeqEvent> events) => events.reversed.map(jsonEncode).join('\n');
+  String _collapseEvents(List<SeqEvent> events) =>
+      events.reversed.map(jsonEncode).join('\n');
 
   Future<http.Response> _sendRequest(String body) async {
     http.Response? response;
@@ -99,7 +100,8 @@ class SeqHttpClient implements SeqClient {
 
         await Future<void>.delayed(backoffDuration);
       }
-    } while (!noRetryStatusCodes.contains(response?.statusCode) && ++tries < _maxRetries);
+    } while (!noRetryStatusCodes.contains(response?.statusCode) &&
+        ++tries < _maxRetries);
 
     if (lastException != null) {
       throw lastException;
@@ -138,7 +140,8 @@ class SeqHttpClient implements SeqClient {
     final message = switch (response.statusCode) {
       400 => 'The request was malformed: $problem',
       401 => 'Authorization is required: $problem',
-      403 => "The provided credentials don't have ingestion permission: $problem",
+      403 =>
+        "The provided credentials don't have ingestion permission: $problem",
       413 => 'The payload itself exceeds the configured maximum size: $problem',
       429 => 'Too many requests',
       500 =>
@@ -151,9 +154,7 @@ class SeqHttpClient implements SeqClient {
     throw SeqHttpClientException(message, response: response);
   }
 
-  Future<List<SeqEventResult>> _retryIndividually(
-    List<SeqEvent> events,
-  ) async {
+  Future<List<SeqEventResult>> _retryIndividually(List<SeqEvent> events) async {
     final results = <SeqEventResult>[];
 
     for (final event in events) {

@@ -14,7 +14,8 @@ http.Response _jsonResponse(
 }) {
   return http.Response(
     jsonEncode({
-      if (minimumLevelAccepted != null) 'MinimumLevelAccepted': minimumLevelAccepted,
+      if (minimumLevelAccepted != null)
+        'MinimumLevelAccepted': minimumLevelAccepted,
       if (error != null) 'Error': error,
     }),
     statusCode,
@@ -25,10 +26,7 @@ void main() {
   group('SeqHttpClient', () {
     group('constructor', () {
       test('asserts host is not empty', () {
-        expect(
-          () => SeqHttpClient(host: ''),
-          throwsA(isA<AssertionError>()),
-        );
+        expect(() => SeqHttpClient(host: ''), throwsA(isA<AssertionError>()));
       });
 
       test('asserts host starts with http', () {
@@ -92,7 +90,9 @@ void main() {
           httpClient: mockClient,
         );
 
-        final results = await client.sendEvents([SeqEvent.info('test message')]);
+        final results = await client.sendEvents([
+          SeqEvent.info('test message'),
+        ]);
 
         expect(results, hasLength(1));
         expect(results.first.isSuccess, isTrue);
@@ -100,10 +100,7 @@ void main() {
 
       test('updates minimumLevelAccepted on 201', () async {
         final mockClient = MockClient(
-          (_) async => _jsonResponse(
-            201,
-            minimumLevelAccepted: 'Warning',
-          ),
+          (_) async => _jsonResponse(201, minimumLevelAccepted: 'Warning'),
         );
 
         final client = SeqHttpClient(
@@ -184,9 +181,7 @@ void main() {
       });
 
       test('throws SeqHttpClientException when body is JSON array', () async {
-        final mockClient = MockClient(
-          (_) async => http.Response('[]', 201),
-        );
+        final mockClient = MockClient((_) async => http.Response('[]', 201));
 
         final client = SeqHttpClient(
           host: 'http://localhost:5341',
@@ -309,72 +304,78 @@ void main() {
     });
 
     group('per-event retry on batch 400', () {
-      test('retries individually when batch returns 400 with multiple events', () async {
-        var batchRequestSent = false;
-        var individualRequests = 0;
+      test(
+        'retries individually when batch returns 400 with multiple events',
+        () async {
+          var batchRequestSent = false;
+          var individualRequests = 0;
 
-        final mockClient = MockClient((request) async {
-          final body = request.body;
-          final isMultiEvent = body.contains('\n');
+          final mockClient = MockClient((request) async {
+            final body = request.body;
+            final isMultiEvent = body.contains('\n');
 
-          if (isMultiEvent && !batchRequestSent) {
-            batchRequestSent = true;
-            return _jsonResponse(400, error: 'batch malformed');
-          }
+            if (isMultiEvent && !batchRequestSent) {
+              batchRequestSent = true;
+              return _jsonResponse(400, error: 'batch malformed');
+            }
 
-          individualRequests++;
-          return _jsonResponse(201);
-        });
+            individualRequests++;
+            return _jsonResponse(201);
+          });
 
-        final client = SeqHttpClient(
-          host: 'http://localhost:5341',
-          httpClient: mockClient,
-        );
+          final client = SeqHttpClient(
+            host: 'http://localhost:5341',
+            httpClient: mockClient,
+          );
 
-        final events = [SeqEvent.info('good1'), SeqEvent.info('good2')];
-        final results = await client.sendEvents(events);
+          final events = [SeqEvent.info('good1'), SeqEvent.info('good2')];
+          final results = await client.sendEvents(events);
 
-        expect(batchRequestSent, isTrue);
-        expect(individualRequests, 2);
-        expect(results, hasLength(2));
-        expect(results.every((r) => r.isSuccess), isTrue);
-      });
+          expect(batchRequestSent, isTrue);
+          expect(individualRequests, 2);
+          expect(results, hasLength(2));
+          expect(results.every((r) => r.isSuccess), isTrue);
+        },
+      );
 
-      test('returns mixed results when one event is rejected individually', () async {
-        var batchRequestSent = false;
-        var individualRequestIndex = 0;
+      test(
+        'returns mixed results when one event is rejected individually',
+        () async {
+          var batchRequestSent = false;
+          var individualRequestIndex = 0;
 
-        final mockClient = MockClient((request) async {
-          final body = request.body;
-          final isMultiEvent = body.contains('\n');
+          final mockClient = MockClient((request) async {
+            final body = request.body;
+            final isMultiEvent = body.contains('\n');
 
-          if (isMultiEvent && !batchRequestSent) {
-            batchRequestSent = true;
-            return _jsonResponse(400, error: 'batch malformed');
-          }
+            if (isMultiEvent && !batchRequestSent) {
+              batchRequestSent = true;
+              return _jsonResponse(400, error: 'batch malformed');
+            }
 
-          individualRequestIndex++;
-          // Second individual event is rejected
-          if (individualRequestIndex == 2) {
-            return _jsonResponse(400, error: 'bad event');
-          }
-          return _jsonResponse(201);
-        });
+            individualRequestIndex++;
+            // Second individual event is rejected
+            if (individualRequestIndex == 2) {
+              return _jsonResponse(400, error: 'bad event');
+            }
+            return _jsonResponse(201);
+          });
 
-        final client = SeqHttpClient(
-          host: 'http://localhost:5341',
-          httpClient: mockClient,
-        );
+          final client = SeqHttpClient(
+            host: 'http://localhost:5341',
+            httpClient: mockClient,
+          );
 
-        final events = [SeqEvent.info('good'), SeqEvent.info('bad')];
-        final results = await client.sendEvents(events);
+          final events = [SeqEvent.info('good'), SeqEvent.info('bad')];
+          final results = await client.sendEvents(events);
 
-        expect(results, hasLength(2));
-        expect(results[0].isSuccess, isTrue);
-        expect(results[1].isSuccess, isFalse);
-        expect(results[1].isPermanent, isTrue);
-        expect(results[1].error, isA<SeqHttpClientException>());
-      });
+          expect(results, hasLength(2));
+          expect(results[0].isSuccess, isTrue);
+          expect(results[1].isSuccess, isFalse);
+          expect(results[1].isPermanent, isTrue);
+          expect(results[1].error, isA<SeqHttpClientException>());
+        },
+      );
 
       test('handles network error during individual retry', () async {
         var batchRequestSent = false;
@@ -400,10 +401,7 @@ void main() {
           backoff: (_) => Duration.zero,
         );
 
-        final events = [
-          SeqEvent.info('good'),
-          SeqEvent.info('network-fail'),
-        ];
+        final events = [SeqEvent.info('good'), SeqEvent.info('network-fail')];
         final results = await client.sendEvents(events);
 
         expect(results, hasLength(2));
@@ -413,40 +411,43 @@ void main() {
         expect(results[1].error, isA<SocketException>());
       });
 
-      test('marks non-400 HTTP error as transient during individual retry', () async {
-        var batchRequestSent = false;
-        var individualRequestIndex = 0;
+      test(
+        'marks non-400 HTTP error as transient during individual retry',
+        () async {
+          var batchRequestSent = false;
+          var individualRequestIndex = 0;
 
-        final mockClient = MockClient((request) async {
-          final body = request.body;
-          final isMultiEvent = body.contains('\n');
+          final mockClient = MockClient((request) async {
+            final body = request.body;
+            final isMultiEvent = body.contains('\n');
 
-          if (isMultiEvent && !batchRequestSent) {
-            batchRequestSent = true;
-            return _jsonResponse(400, error: 'batch malformed');
-          }
+            if (isMultiEvent && !batchRequestSent) {
+              batchRequestSent = true;
+              return _jsonResponse(400, error: 'batch malformed');
+            }
 
-          individualRequestIndex++;
-          if (individualRequestIndex == 2) {
-            return _jsonResponse(500, error: 'server error');
-          }
-          return _jsonResponse(201);
-        });
+            individualRequestIndex++;
+            if (individualRequestIndex == 2) {
+              return _jsonResponse(500, error: 'server error');
+            }
+            return _jsonResponse(201);
+          });
 
-        final client = SeqHttpClient(
-          host: 'http://localhost:5341',
-          httpClient: mockClient,
-        );
+          final client = SeqHttpClient(
+            host: 'http://localhost:5341',
+            httpClient: mockClient,
+          );
 
-        final events = [SeqEvent.info('good'), SeqEvent.info('server-fail')];
-        final results = await client.sendEvents(events);
+          final events = [SeqEvent.info('good'), SeqEvent.info('server-fail')];
+          final results = await client.sendEvents(events);
 
-        expect(results, hasLength(2));
-        expect(results[0].isSuccess, isTrue);
-        expect(results[1].isSuccess, isFalse);
-        expect(results[1].isPermanent, isFalse);
-        expect(results[1].error, isA<SeqHttpClientException>());
-      });
+          expect(results, hasLength(2));
+          expect(results[0].isSuccess, isTrue);
+          expect(results[1].isSuccess, isFalse);
+          expect(results[1].isPermanent, isFalse);
+          expect(results[1].error, isA<SeqHttpClientException>());
+        },
+      );
 
       test('does not retry individually on 400 with single event', () async {
         final mockClient = MockClient(
@@ -475,84 +476,87 @@ void main() {
         );
 
         expect(
-          () => client.sendEvents([
-            SeqEvent.info('one'),
-            SeqEvent.info('two'),
-          ]),
+          () => client.sendEvents([SeqEvent.info('one'), SeqEvent.info('two')]),
           throwsA(isA<SeqHttpClientException>()),
         );
       });
 
-      test('updates minimumLevelAccepted from individual retry responses', () async {
-        var batchRequestSent = false;
+      test(
+        'updates minimumLevelAccepted from individual retry responses',
+        () async {
+          var batchRequestSent = false;
 
-        final mockClient = MockClient((request) async {
-          final body = request.body;
-          final isMultiEvent = body.contains('\n');
+          final mockClient = MockClient((request) async {
+            final body = request.body;
+            final isMultiEvent = body.contains('\n');
 
-          if (isMultiEvent && !batchRequestSent) {
-            batchRequestSent = true;
-            return _jsonResponse(400, error: 'batch malformed');
-          }
+            if (isMultiEvent && !batchRequestSent) {
+              batchRequestSent = true;
+              return _jsonResponse(400, error: 'batch malformed');
+            }
 
-          return _jsonResponse(201, minimumLevelAccepted: 'Error');
-        });
+            return _jsonResponse(201, minimumLevelAccepted: 'Error');
+          });
 
-        final client = SeqHttpClient(
-          host: 'http://localhost:5341',
-          httpClient: mockClient,
-        );
+          final client = SeqHttpClient(
+            host: 'http://localhost:5341',
+            httpClient: mockClient,
+          );
 
-        final results = await client.sendEvents([
-          SeqEvent.info('one'),
-          SeqEvent.info('two'),
-        ]);
+          final results = await client.sendEvents([
+            SeqEvent.info('one'),
+            SeqEvent.info('two'),
+          ]);
 
-        expect(results, hasLength(2));
-        expect(results.every((r) => r.isSuccess), isTrue);
-        expect(client.minimumLevelAccepted, 'Error');
-      });
+          expect(results, hasLength(2));
+          expect(results.every((r) => r.isSuccess), isTrue);
+          expect(client.minimumLevelAccepted, 'Error');
+        },
+      );
     });
 
     group('event serialization', () {
-      test('sends events as newline-delimited JSON in reversed order', () async {
-        String? capturedBody;
+      test(
+        'sends events as newline-delimited JSON in reversed order',
+        () async {
+          String? capturedBody;
 
-        final mockClient = MockClient((request) async {
-          capturedBody = request.body;
+          final mockClient = MockClient((request) async {
+            capturedBody = request.body;
 
-          return _jsonResponse(201);
-        });
+            return _jsonResponse(201);
+          });
 
-        final client = SeqHttpClient(
-          host: 'http://localhost:5341',
-          httpClient: mockClient,
-        );
+          final client = SeqHttpClient(
+            host: 'http://localhost:5341',
+            httpClient: mockClient,
+          );
 
-        final events = [
-          SeqEvent(
-            timestamp: DateTime.utc(2024),
-            message: 'first',
-            level: 'Information',
-          ),
-          SeqEvent(
-            timestamp: DateTime.utc(2024, 1, 2),
-            message: 'second',
-            level: 'Warning',
-          ),
-        ];
+          final events = [
+            SeqEvent(
+              timestamp: DateTime.utc(2024),
+              message: 'first',
+              level: 'Information',
+            ),
+            SeqEvent(
+              timestamp: DateTime.utc(2024, 1, 2),
+              message: 'second',
+              level: 'Warning',
+            ),
+          ];
 
-        await client.sendEvents(events);
+          await client.sendEvents(events);
 
-        expect(capturedBody, isNotNull);
-        final lines = capturedBody!.split('\n');
-        expect(lines, hasLength(2));
+          expect(capturedBody, isNotNull);
+          final lines = capturedBody!.split('\n');
+          expect(lines, hasLength(2));
 
-        final firstLine = jsonDecode(lines[0]) as Map<String, dynamic>;
-        final secondLine = jsonDecode(lines[1]) as Map<String, dynamic>;
-        expect(firstLine['@m'], 'second');
-        expect(secondLine['@m'], 'first');
-      });
+          final firstLine = jsonDecode(lines[0]) as Map<String, dynamic>;
+          final secondLine = jsonDecode(lines[1]) as Map<String, dynamic>;
+          expect(firstLine['@m'], 'second');
+          expect(secondLine['@m'], 'first');
+        },
+      );
 
       test('each line in request body is valid JSON', () async {
         String? capturedBody;

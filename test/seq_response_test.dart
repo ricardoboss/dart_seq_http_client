@@ -24,8 +24,9 @@ void main() {
     });
 
     test('fromJson with only MinimumLevelAccepted', () {
-      final response =
-          SeqResponse.fromJson({'MinimumLevelAccepted': 'Warning'});
+      final response = SeqResponse.fromJson({
+        'MinimumLevelAccepted': 'Warning',
+      });
 
       expect(response.minimumLevelAccepted, 'Warning');
       expect(response.error, isNull);

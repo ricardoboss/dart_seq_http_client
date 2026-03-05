@@ -43,10 +43,7 @@ Future<void> main() async {
   final logger = SeqHttpLogger.create(
     host: 'http://localhost:5341',
     backlogLimit: 10,
-    globalContext: {
-      'App': 'dart_seq_example',
-      'Environment': 'development',
-    },
+    globalContext: {'App': 'dart_seq_example', 'Environment': 'development'},
     onFlushError: _handleFlushError,
   );
 
@@ -54,10 +51,7 @@ Future<void> main() async {
   await logger.verbose('Application starting up');
   await logger.debug('Loading configuration');
   await logger.info('Server listening on port {Port}', context: {'Port': 8080});
-  await logger.warning(
-    'Cache miss rate is {Rate}%',
-    context: {'Rate': 87.5},
-  );
+  await logger.warning('Cache miss rate is {Rate}%', context: {'Rate': 87.5});
 
   // ── Errors with exceptions ──────────────────────────────────────────
   try {
