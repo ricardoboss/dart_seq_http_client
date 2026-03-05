@@ -14,8 +14,7 @@ http.Response _jsonResponse(
 }) {
   return http.Response(
     jsonEncode({
-      if (minimumLevelAccepted != null)
-        'MinimumLevelAccepted': minimumLevelAccepted,
+      if (minimumLevelAccepted != null) 'MinimumLevelAccepted': minimumLevelAccepted,
       if (error != null) 'Error': error,
     }),
     statusCode,
@@ -93,8 +92,7 @@ void main() {
           httpClient: mockClient,
         );
 
-        final results =
-            await client.sendEvents([SeqEvent.info('test message')]);
+        final results = await client.sendEvents([SeqEvent.info('test message')]);
 
         expect(results, hasLength(1));
         expect(results.first.isSuccess, isTrue);
@@ -136,137 +134,38 @@ void main() {
         await client.sendEvents([SeqEvent.info('test')]);
       });
 
-      test('throws SeqHttpClientException on 400 with single event', () async {
-        final mockClient = MockClient(
-          (_) async => _jsonResponse(400, error: 'bad request'),
-        );
+      final errorCases = {
+        400: 'malformed',
+        401: 'Authorization is required',
+        403: 'ingestion permission',
+        413: 'maximum size',
+        500: 'internal error',
+        503: 'starting up',
+      };
 
-        final client = SeqHttpClient(
-          host: 'http://localhost:5341',
-          httpClient: mockClient,
-        );
+      for (final entry in errorCases.entries) {
+        test('throws SeqHttpClientException on ${entry.key}', () async {
+          final mockClient = MockClient(
+            (_) async => _jsonResponse(entry.key, error: 'error details'),
+          );
 
-        expect(
-          () => client.sendEvents([SeqEvent.info('test')]),
-          throwsA(
-            isA<SeqHttpClientException>().having(
-              (e) => e.message,
-              'message',
-              contains('malformed'),
+          final client = SeqHttpClient(
+            host: 'http://localhost:5341',
+            httpClient: mockClient,
+          );
+
+          expect(
+            () => client.sendEvents([SeqEvent.info('test')]),
+            throwsA(
+              isA<SeqHttpClientException>().having(
+                (e) => e.message,
+                'message',
+                contains(entry.value),
+              ),
             ),
-          ),
-        );
-      });
-
-      test('throws SeqHttpClientException on 401', () async {
-        final mockClient = MockClient(
-          (_) async => _jsonResponse(401, error: 'unauthorized'),
-        );
-
-        final client = SeqHttpClient(
-          host: 'http://localhost:5341',
-          httpClient: mockClient,
-        );
-
-        expect(
-          () => client.sendEvents([SeqEvent.info('test')]),
-          throwsA(
-            isA<SeqHttpClientException>().having(
-              (e) => e.message,
-              'message',
-              contains('Authorization is required'),
-            ),
-          ),
-        );
-      });
-
-      test('throws SeqHttpClientException on 403', () async {
-        final mockClient = MockClient(
-          (_) async => _jsonResponse(403, error: 'forbidden'),
-        );
-
-        final client = SeqHttpClient(
-          host: 'http://localhost:5341',
-          httpClient: mockClient,
-        );
-
-        expect(
-          () => client.sendEvents([SeqEvent.info('test')]),
-          throwsA(
-            isA<SeqHttpClientException>().having(
-              (e) => e.message,
-              'message',
-              contains('ingestion permission'),
-            ),
-          ),
-        );
-      });
-
-      test('throws SeqHttpClientException on 413', () async {
-        final mockClient = MockClient(
-          (_) async => _jsonResponse(413, error: 'too large'),
-        );
-
-        final client = SeqHttpClient(
-          host: 'http://localhost:5341',
-          httpClient: mockClient,
-        );
-
-        expect(
-          () => client.sendEvents([SeqEvent.info('test')]),
-          throwsA(
-            isA<SeqHttpClientException>().having(
-              (e) => e.message,
-              'message',
-              contains('maximum size'),
-            ),
-          ),
-        );
-      });
-
-      test('throws SeqHttpClientException on 500', () async {
-        final mockClient = MockClient(
-          (_) async => _jsonResponse(500, error: 'internal error'),
-        );
-
-        final client = SeqHttpClient(
-          host: 'http://localhost:5341',
-          httpClient: mockClient,
-        );
-
-        expect(
-          () => client.sendEvents([SeqEvent.info('test')]),
-          throwsA(
-            isA<SeqHttpClientException>().having(
-              (e) => e.message,
-              'message',
-              contains('internal error'),
-            ),
-          ),
-        );
-      });
-
-      test('throws SeqHttpClientException on 503', () async {
-        final mockClient = MockClient(
-          (_) async => _jsonResponse(503, error: 'service unavailable'),
-        );
-
-        final client = SeqHttpClient(
-          host: 'http://localhost:5341',
-          httpClient: mockClient,
-        );
-
-        expect(
-          () => client.sendEvents([SeqEvent.info('test')]),
-          throwsA(
-            isA<SeqHttpClientException>().having(
-              (e) => e.message,
-              'message',
-              contains('starting up'),
-            ),
-          ),
-        );
-      });
+          );
+        });
+      }
 
       test('throws FormatException on non-JSON response body', () async {
         final mockClient = MockClient(
@@ -410,8 +309,7 @@ void main() {
     });
 
     group('per-event retry on batch 400', () {
-      test('retries individually when batch returns 400 with multiple events',
-          () async {
+      test('retries individually when batch returns 400 with multiple events', () async {
         var batchRequestSent = false;
         var individualRequests = 0;
 
@@ -442,8 +340,7 @@ void main() {
         expect(results.every((r) => r.isSuccess), isTrue);
       });
 
-      test('returns mixed results when one event is rejected individually',
-          () async {
+      test('returns mixed results when one event is rejected individually', () async {
         var batchRequestSent = false;
         var individualRequestIndex = 0;
 
@@ -516,8 +413,7 @@ void main() {
         expect(results[1].error, isA<SocketException>());
       });
 
-      test('marks non-400 HTTP error as transient during individual retry',
-          () async {
+      test('marks non-400 HTTP error as transient during individual retry', () async {
         var batchRequestSent = false;
         var individualRequestIndex = 0;
 
@@ -587,8 +483,7 @@ void main() {
         );
       });
 
-      test('updates minimumLevelAccepted from individual retry responses',
-          () async {
+      test('updates minimumLevelAccepted from individual retry responses', () async {
         var batchRequestSent = false;
 
         final mockClient = MockClient((request) async {
@@ -619,8 +514,21 @@ void main() {
       });
     });
 
-    group('_collapseEvents', () {
-      test('serializes events as newline-delimited JSON', () {
+    group('event serialization', () {
+      test('sends events as newline-delimited JSON in reversed order', () async {
+        String? capturedBody;
+
+        final mockClient = MockClient((request) async {
+          capturedBody = request.body;
+
+          return _jsonResponse(201);
+        });
+
+        final client = SeqHttpClient(
+          host: 'http://localhost:5341',
+          httpClient: mockClient,
+        );
+
         final events = [
           SeqEvent(
             timestamp: DateTime.utc(2024),
@@ -634,33 +542,43 @@ void main() {
           ),
         ];
 
-        // Replicate the internal _collapseEvents behavior
-        final body = events.reversed.map(jsonEncode).join('\n');
-        final lines = body.split('\n');
+        await client.sendEvents(events);
 
+        expect(capturedBody, isNotNull);
+        final lines = capturedBody!.split('\n');
         expect(lines, hasLength(2));
 
-        // Events are reversed - second event comes first
         final firstLine = jsonDecode(lines[0]) as Map<String, dynamic>;
         final secondLine = jsonDecode(lines[1]) as Map<String, dynamic>;
         expect(firstLine['@m'], 'second');
         expect(secondLine['@m'], 'first');
       });
 
-      test('each line is valid JSON', () {
-        final events = [
+      test('each line in request body is valid JSON', () async {
+        String? capturedBody;
+
+        final mockClient = MockClient((request) async {
+          capturedBody = request.body;
+
+          return _jsonResponse(201);
+        });
+
+        final client = SeqHttpClient(
+          host: 'http://localhost:5341',
+          httpClient: mockClient,
+        );
+
+        await client.sendEvents([
           SeqEvent.info('msg1'),
           SeqEvent.warning('msg2'),
           SeqEvent.error('msg3'),
-        ];
+        ]);
 
-        final body = events.reversed.map(jsonEncode).join('\n');
-
-        for (final line in body.split('\n')) {
+        expect(capturedBody, isNotNull);
+        for (final line in capturedBody!.split('\n')) {
           expect(() => jsonDecode(line), returnsNormally);
         }
       });
-
     });
   });
 
