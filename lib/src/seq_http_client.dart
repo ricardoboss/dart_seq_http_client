@@ -40,8 +40,10 @@ class SeqHttpClient implements SeqClient {
   String? get minimumLevelAccepted => _minimumLevelAccepted;
 
   @override
-  Future<List<SeqEventResult>> sendEvents(List<SeqEvent> events) async {
-    final body = _collapseEvents(events);
+  Future<Iterable<SeqEventResult>> sendEvents(Iterable<SeqEvent> events) async {
+    final eventList = events.toList();
+    final body = _collapseEvents(eventList);
+
     if (body.isEmpty) {
       SeqLogger.diagnosticLog(SeqLogLevel.verbose, 'No events to send.');
 
@@ -57,11 +59,11 @@ class SeqHttpClient implements SeqClient {
 
     if (response.statusCode == 201) {
       _handleSuccessResponse(response);
-      return events.map(SeqEventResult.success).toList();
+      return eventList.map(SeqEventResult.success);
     }
 
-    if (response.statusCode == 400 && events.length > 1) {
-      return _retryIndividually(events);
+    if (response.statusCode == 400 && eventList.length > 1) {
+      return _retryIndividually(eventList);
     }
 
     // Non-recoverable per-event error - always throws
@@ -154,7 +156,9 @@ class SeqHttpClient implements SeqClient {
     throw SeqHttpClientException(message, response: response);
   }
 
-  Future<List<SeqEventResult>> _retryIndividually(List<SeqEvent> events) async {
+  Future<Iterable<SeqEventResult>> _retryIndividually(
+    Iterable<SeqEvent> events,
+  ) async {
     final results = <SeqEventResult>[];
 
     for (final event in events) {

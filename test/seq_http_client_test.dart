@@ -367,7 +367,7 @@ void main() {
           );
 
           final events = [SeqEvent.info('good'), SeqEvent.info('bad')];
-          final results = await client.sendEvents(events);
+          final results = (await client.sendEvents(events)).toList();
 
           expect(results, hasLength(2));
           expect(results[0].isSuccess, isTrue);
@@ -402,7 +402,7 @@ void main() {
         );
 
         final events = [SeqEvent.info('good'), SeqEvent.info('network-fail')];
-        final results = await client.sendEvents(events);
+        final results = (await client.sendEvents(events)).toList();
 
         expect(results, hasLength(2));
         expect(results[0].isSuccess, isTrue);
@@ -439,7 +439,7 @@ void main() {
           );
 
           final events = [SeqEvent.info('good'), SeqEvent.info('server-fail')];
-          final results = await client.sendEvents(events);
+          final results = (await client.sendEvents(events)).toList();
 
           expect(results, hasLength(2));
           expect(results[0].isSuccess, isTrue);
