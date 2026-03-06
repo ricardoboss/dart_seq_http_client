@@ -22,6 +22,6 @@ dev_dependencies:
   test: ^1.25.2
 
 # For development, use the local path dependency to dart_seq
-dependency_overrides:
-  dart_seq:
-    path: ../dart_seq
+# dependency_overrides:
+#   dart_seq:
+#     path: ../dart_seq
