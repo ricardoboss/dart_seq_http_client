@@ -20,32 +20,47 @@ void main() {
 
     test('create() uses custom cache when provided', () {
       final customCache = SeqInMemoryCache();
-      final logger = SeqHttpLogger.create(host: 'https://localhost', cache: customCache);
+      final logger = SeqHttpLogger.create(
+        host: 'https://localhost',
+        cache: customCache,
+      );
 
       expect(logger.cache, same(customCache));
     });
 
     test('create() passes backlogLimit through', () {
-      final logger = SeqHttpLogger.create(host: 'https://localhost', backlogLimit: 100);
+      final logger = SeqHttpLogger.create(
+        host: 'https://localhost',
+        backlogLimit: 100,
+      );
 
       expect(logger.backlogLimit, 100);
     });
 
     test('create() passes globalContext through', () {
       final context = {'app': 'test'};
-      final logger = SeqHttpLogger.create(host: 'https://localhost', globalContext: context);
+      final logger = SeqHttpLogger.create(
+        host: 'https://localhost',
+        globalContext: context,
+      );
 
       expect(logger.globalContext, same(context));
     });
 
     test('create() passes minimumLogLevel through', () {
-      final logger = SeqHttpLogger.create(host: 'https://localhost', minimumLogLevel: 'Warning');
+      final logger = SeqHttpLogger.create(
+        host: 'https://localhost',
+        minimumLogLevel: 'Warning',
+      );
 
       expect(logger.minimumLogLevel, 'Warning');
     });
 
     test('create() passes autoFlush through', () {
-      final logger = SeqHttpLogger.create(host: 'https://localhost', autoFlush: false);
+      final logger = SeqHttpLogger.create(
+        host: 'https://localhost',
+        autoFlush: false,
+      );
 
       expect(logger.autoFlush, isFalse);
     });
@@ -69,7 +84,10 @@ void main() {
     });
 
     test('create() passes throwOnError through', () {
-      final logger = SeqHttpLogger.create(host: 'https://localhost', throwOnError: true);
+      final logger = SeqHttpLogger.create(
+        host: 'https://localhost',
+        throwOnError: true,
+      );
 
       expect(logger.throwOnError, isTrue);
     });
@@ -86,7 +104,11 @@ void main() {
         requestReceived = true;
         return http.Response('{}', 201);
       });
-      final logger = SeqHttpLogger.create(host: 'https://localhost', httpClient: mockClient, autoFlush: false);
+      final logger = SeqHttpLogger.create(
+        host: 'https://localhost',
+        httpClient: mockClient,
+        autoFlush: false,
+      );
 
       await logger.log(SeqLogLevel.information, 'test');
       await logger.flush();
