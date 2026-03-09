@@ -78,7 +78,8 @@ void main() {
         final mockClient = MockClient((request) async {
           expect(request.url.path, '/api/events/raw');
           expect(
-            request.headers['Content-Type'],
+            // handle optional "; charset=utf-8"
+            request.headers['Content-Type']?.split(';').first,
             'application/vnd.serilog.clef',
           );
 
