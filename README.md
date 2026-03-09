@@ -11,7 +11,8 @@ entries to a Seq server using HTTP ingestion.
 
 Additionally to the features provided by `dart_seq`, `dart_seq_http_client` offers:
 
-- **Automatic Retry Mechanism**: The library automatically retries failed requests to the Seq server, except in the case of 429 (Too Many Requests) responses. This built-in resilience ensures that log entries are reliably delivered, even in the face of intermittent network connectivity or temporary server unavailability.
+- **Automatic Retry Mechanism**: The library automatically retries failed requests to the Seq server with configurable backoff. Non-retryable status codes (400, 401, 403, 413, 429, 500) are not retried at the batch level.
+- **Per-Event Error Isolation**: When a batch is rejected with HTTP 400, the client automatically retries each event individually to isolate malformed events. Valid events are delivered; only the bad ones fail.
 - **Minimum Log Level Enforcement**: `dart_seq_http_client` keeps track of the server-side configured minimum log level and discards events that fall below this threshold. This feature helps reduce unnecessary log entries and ensures that only relevant and significant events are forwarded to the Seq server.
 
 ## Getting Started
@@ -43,8 +44,7 @@ Future<void> main() async {
   await logger.log(
     SeqLogLevel.information,
     'test, logged at: {Timestamp}',
-    null,
-    {
+    context: {
       'Timestamp': DateTime.now().toUtc().toIso8601String(),
     },
   );
@@ -56,6 +56,105 @@ Future<void> main() async {
 
 See the [`example`](./example) directory for a complete example, including a `docker-compose.yml`
 file to start a local Seq instance.
+
+## HTTP Retry Behavior
+
+`SeqHttpClient.sendEvents()` handles server responses as follows:
+
+| Server response     | Batch size | Behavior                                                      |
+| ------------------- | ---------- | ------------------------------------------------------------- |
+| **201**             | any        | Success - returns all `SeqEventResult.success`                |
+| **400**             | > 1        | Per-event retry - each event sent individually (see below)    |
+| **400**             | 1          | **Throws** - single event is malformed, can't isolate further |
+| **401/403**         | any        | **Throws** - auth problem, not per-event                      |
+| **413/429/500/503** | any        | **Throws** - server problem, not per-event                    |
+| Network error       | any        | Retries with backoff up to `maxRetries`, then **throws**      |
+
+When an error **throws**, it propagates to `SeqLogger.flush()`. By default, flush catches and
+handles the error silently. Set `throwOnError: true` to let it propagate to your code.
+
+### Per-event retry on batch 400
+
+When a batch of multiple events is rejected with HTTP 400, the client retries each event
+individually to isolate the bad ones:
+
+| Individual response | Result                                                           |
+| ------------------- | ---------------------------------------------------------------- |
+| 201                 | `SeqEventResult.success`                                         |
+| 400                 | `SeqEventResult.failure(isPermanent: true)` - event is malformed |
+| Other 4xx/5xx       | `SeqEventResult.failure(isPermanent: false)` - transient         |
+| Network error       | `SeqEventResult.failure(isPermanent: false)` - transient         |
+
+The `isPermanent` flag tells `SeqLogger.flush()` whether to drop or re-queue the event
+(see [`dart_seq` README](https://pub.dev/packages/dart_seq) for flush behavior details).
+
+### End-to-end example
+
+3 events sent in batch, server returns 400, per-event retry finds event #2 is malformed:
+
+```
+flush():
+  POST batch [1, 2, 3] -> 400
+  POST event 1 -> 201 (success)
+  POST event 2 -> 400 (isPermanent: true)
+  POST event 3 -> 201 (success)
+
+Result: events 1 and 3 delivered, event 2 dropped from cache
+```
+
+## Error Handling
+
+By default, logging methods will never throw exceptions - errors during flush are silently caught
+and reported via `onDiagnosticLog`. To let exceptions propagate, set `throwOnError: true`:
+
+```dart
+final logger = SeqHttpLogger.create(
+  host: 'http://localhost:5341',
+  throwOnError: true, // exceptions propagate to caller
+);
+```
+
+When `throwOnError` is `false` (default), you can still observe errors using the `onFlushError`
+callback or the diagnostic log:
+
+```dart
+// Observe all internal diagnostics
+SeqLogger.onDiagnosticLog = (event) {
+  print('[dart_seq] ${event.level}: ${event.message ?? event.messageTemplate}');
+};
+```
+
+The default flush behavior (without `onFlushError`) already handles the common cases:
+- Permanent failures (HTTP 400) are dropped
+- Transient failures (network, server errors) are re-queued
+- Total failures (exception thrown) leave events in cache
+
+Only provide `onFlushError` if you need custom logic (logging, retry limits, etc.):
+
+```dart
+final logger = SeqHttpLogger.create(
+  host: 'http://localhost:5341',
+  onFlushError: (Iterable<SeqEventResult> results, Object error) async {
+    final toRetry = <SeqEvent>[];
+
+    for (final r in results.where((r) => !r.isSuccess)) {
+      if (r.isPermanent) {
+        print('Dropping malformed event: ${r.error}');
+        continue;
+      }
+      toRetry.add(r.event);
+    }
+
+    return toRetry;
+  },
+);
+```
+
+### Exception hierarchy
+
+- `SeqClientException` - base exception for all Seq client errors (defined in `dart_seq`)
+- `SeqHttpClientException` - HTTP-specific errors with access to the `Response` object
+  (defined in `dart_seq_http_client`)
 
 ## Additional information
 
