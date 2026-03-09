@@ -1,4 +1,4 @@
-## Unreleased
+## 2.0.0
 
 * BREAKING: Requires `dart_seq` 3.0.0 (`sendEvents` returns `Future<List<SeqEventResult>>`)
 * BREAKING: `SeqResponse` constructor now uses named parameters
